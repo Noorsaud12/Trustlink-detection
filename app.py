@@ -71,3 +71,26 @@ if st.button("Check"):
             st.write("- Balanced followers/following ratio")
             st.write("- Normal posting activity")
             st.write("- No suspicious links or spam comments")
+from sklearn.utils import resample
+
+# فصل المزيف والحقيقي من الداتا الأصلية df
+fake_accounts = df[df["is_fake"] == 1]
+real_accounts = df[df["is_fake"] == 0]
+
+# أخذ 200 من كل نوع (مع إعادة أخذ عينات إذا ناقص)
+fake_sample = resample(fake_accounts, replace=True, n_samples=200, random_state=42)
+real_sample = resample(real_accounts, replace=True, n_samples=200, random_state=42)
+
+# دمجهم مع بعض
+balanced_df = pd.concat([fake_sample, real_sample])
+
+# استخدمي balanced_df بدل df في التدريب
+X = balanced_df.drop("is_fake", axis=1)
+y = balanced_df["is_fake"]
+
+# تقسيم البيانات للتدريب والاختبار
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# تدريب النموذج على البيانات المتوازنة
+model = RandomForestClassifier(random_state=42)
+model.fit(X_train, y_train)
