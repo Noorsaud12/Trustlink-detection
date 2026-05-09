@@ -28,6 +28,7 @@ if username:
         age = user['account_age_days'].values[0]
         platform = user['platform'].values[0]
         images = random.randint(5, 50)
+        comments_enabled = random.choice([True, False])  # simulate comments status
     else:
         followers = random.randint(50, 5000)
         following = random.randint(10, 1000)
@@ -35,7 +36,8 @@ if username:
         age = random.randint(1, 2000)
         platform = random.choice(["Instagram", "Twitter", "Facebook"])
         images = random.randint(20, 200)
-        st.write("⚠️ This account seems new, estimated values shown:")
+        comments_enabled = random.choice([True, False])
+        
 
     st.write(f"**Username:** {username}")
     st.write(f"**Platform:** {platform}")
@@ -44,6 +46,7 @@ if username:
     st.write(f"**Posts:** {posts}")
     st.write(f"**Account Age (days):** {age}")
     st.write(f"**Images Uploaded:** {images}")
+    st.write(f"**Comments Status:** {'🔓 Open' if comments_enabled else '🔒 Closed'}")
 
     # Fake/Real logic with explanation
     reasons_fake = []
@@ -72,15 +75,27 @@ if username:
     else:
         reasons_real.append("🟢 Followers/Following ratio is balanced")
 
+    if not comments_enabled:
+        reasons_fake.append("🔴 Comments are disabled (no interaction)")
+    else:
+        reasons_real.append("🟢 Comments are open (normal interaction)")
+
     if reasons_fake:
         st.error("❌ This account is likely FAKE")
         st.write("Reasons:")
         for r in reasons_fake:
             st.write(r)
-        st.write("📌 Summary: الحساب جديد جدًا مع نشاط قليل → Fake")
+        st.write("📌 Summary: New account or suspicious activity + comments closed → Fake")
     else:
         st.success("✅ This account looks REAL")
         st.write("Reasons:")
         for r in reasons_real:
             st.write(r)
-        st.write("📌 Summary: الحساب قديم ومتوازن → Real")
+        st.write("📌 Summary: Old and balanced account + comments open → Real")
+
+    # Bar chart visualization
+    chart_data = pd.DataFrame({
+        "Metric": ["Followers", "Following", "Posts", "Account Age (days)", "Images"],
+        "Count": [followers, following, posts, age, images]
+    })
+    st.bar_chart(chart_data.set_index("Metric"))
