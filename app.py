@@ -1,97 +1,86 @@
 import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import LabelEncoder
+import random
 
-# --- Load dataset ---
-df = pd.read_csv("fake_social_media.csv")
+# Sample dataset
+data = {
+    "username": ["noor123", "trustlink22", "ahmed_dev"],
+    "followers": [150, 2000, 500],
+    "following": [100, 300, 50],
+    "posts": [20, 150, 40],
+    "account_age_days": [365, 120, 600],
+    "platform": ["Instagram", "Twitter", "Facebook"]
+}
 
-# --- Add fake usernames ---
-df["username"] = [f"user_{i}" for i in range(len(df))]
+df = pd.DataFrame(data)
 
-# --- Encode text columns ---
-text_columns = df.select_dtypes(include=["object"]).columns
-for col in text_columns:
-    le = LabelEncoder()
-    df[col] = le.fit_transform(df[col])
+st.title("TrustLink Fake Detection")
 
-# --- Prepare features and target ---
-X = df.drop(columns=["is_fake"])
-y = df["is_fake"]
+username = st.text_input("Enter username:")
 
-# --- Split data ---
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+if username:
+    user = df[df["username"] == username]
 
-# --- Train model ---
-model = LogisticRegression(max_iter=1000)
-model.fit(X_train, y_train)
-
-# --- Streamlit Interface ---
-st.title("Fake Account Detection")
-
-username = st.text_input("Enter username (e.g., user_10):")
-
-if st.button("Check"):
-    # البحث عن الحساب
-    if username.startswith("user_"):
-        try:
-            user_index = int(username.replace("user_", ""))
-        except:
-            user_index = None
+    if not user.empty:
+        followers = user['followers'].values[0]
+        following = user['following'].values[0]
+        posts = user['posts'].values[0]
+        age = user['account_age_days'].values[0]
+        platform = user['platform'].values[0]
+        images = random.randint(5, 50)
     else:
-        user_index = None
+        followers = random.randint(50, 5000)
+        following = random.randint(10, 1000)
+        posts = random.randint(0, 10)
+        age = random.randint(1, 2000)
+        platform = random.choice(["Instagram", "Twitter", "Facebook"])
+        images = random.randint(20, 200)
+        st.write("⚠️ This account seems new, estimated values shown:")
 
-    if user_index is None or user_index >= len(df):
-        st.write("❌ Username not found in dataset")
+    st.write(f"**Username:** {username}")
+    st.write(f"**Platform:** {platform}")
+    st.write(f"**Followers:** {followers}")
+    st.write(f"**Following:** {following}")
+    st.write(f"**Posts:** {posts}")
+    st.write(f"**Account Age (days):** {age}")
+    st.write(f"**Images Uploaded:** {images}")
+
+    # Fake/Real logic with explanation
+    reasons_fake = []
+    reasons_real = []
+
+    if age < 30:
+        reasons_fake.append("🔴 Account age is very short (<30 days)")
     else:
-        user_data = df.iloc[[user_index]]
-        X_user = user_data.drop(columns=["is_fake"])
-        prediction = model.predict(X_user)[0]
+        reasons_real.append("🟢 Account age is reasonable")
 
-        # عرض التفاصيل
-        st.subheader("📊 Account Details")
-        st.write(user_data.drop(columns=["is_fake"]).T)
+    if posts <= 2:
+        reasons_fake.append("🔴 Very few posts (0–2)")
+    else:
+        reasons_real.append("🟢 Posts are consistent")
 
-        # عرض النتيجة مع الأسباب
-        if prediction == 1:
-            st.warning("⚠️ Fake account detected")
-            st.write("### Possible reasons:")
-            if user_data["follow_unfollow_rate"].values[0] > 300:
-                st.write("- High follow/unfollow rate")
-            if user_data["suspicious_links_in_bio"].values[0] == 1:
-                st.write("- Suspicious links in bio")
-            if user_data["spam_comments_rate"].values[0] > 100:
-                st.write("- Many spam comments")
-            if user_data["posts_per_day"].values[0] > 5 or user_data["posts_per_day"].values[0] < 0.05:
-                st.write("- Abnormal posting activity")
-        else:
-            st.success("✅ Real account detected")
-            st.write("### Positive indicators:")
-            st.write("- Balanced followers/following ratio")
-            st.write("- Normal posting activity")
-            st.write("- No suspicious links or spam comments")
-from sklearn.utils import resample
-from sklearn.ensemble import RandomForestClassifier
+    if images > 50 and posts <= 2:
+        reasons_fake.append("🔴 Too many images compared to posts")
 
-# فصل المزيف والحقيقي من الداتا الأصلية df
-fake_accounts = df[df["is_fake"] == 1]
-real_accounts = df[df["is_fake"] == 0]
+    if followers < 100:
+        reasons_fake.append("🔴 Very low followers count")
+    else:
+        reasons_real.append("🟢 Followers count looks fine")
 
-# أخذ 200 من كل نوع
-fake_sample = resample(fake_accounts, replace=True, n_samples=200, random_state=42)
-real_sample = resample(real_accounts, replace=True, n_samples=200, random_state=42)
+    if followers/following < 0.5:
+        reasons_fake.append("🔴 Followers/Following ratio is suspicious")
+    else:
+        reasons_real.append("🟢 Followers/Following ratio is balanced")
 
-# دمجهم مع بعض
-balanced_df = pd.concat([fake_sample, real_sample])
-
-# استخدمي balanced_df بدل df في التدريب
-X = balanced_df.drop("is_fake", axis=1)
-y = balanced_df["is_fake"]
-
-# تقسيم البيانات
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# تدريب النموذج
-model = RandomForestClassifier(random_state=42)
-model.fit(X_train, y_train)
+    if reasons_fake:
+        st.error("❌ This account is likely FAKE")
+        st.write("Reasons:")
+        for r in reasons_fake:
+            st.write(r)
+        st.write("📌 Summary: الحساب جديد جدًا مع نشاط قليل → Fake")
+    else:
+        st.success("✅ This account looks REAL")
+        st.write("Reasons:")
+        for r in reasons_real:
+            st.write(r)
+        st.write("📌 Summary: الحساب قديم ومتوازن → Real")
